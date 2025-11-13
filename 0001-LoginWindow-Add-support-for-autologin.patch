@@ -1,0 +1,96 @@
+From f165e0424c0d8bf010eb2561a15e9c4ca46feb99 Mon Sep 17 00:00:00 2001
+From: root <root@pve.test>
+Date: Mon, 7 Jul 2025 16:06:54 +0200
+Subject: [PATCH] LoginWindow: Add support for autologin.
+
+When a query parameter `autologin' is present, the value of the argument is used
+to lookup a realm, set it as currently selected, and press the `Login' button.
+This only makes sense for openid realms.
+
+* www/manager6/window/LoginWindow.js (X_maybe_auto_login_satoinegf): New
+function.
+(PVE.window.LoginWindow): Add afterrender listener.
+<items>: Set reference for realm.  Offer the patches.
+---
+ www/manager6/window/LoginWindow.js | 48 ++++++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
+
+diff --git a/www/manager6/window/LoginWindow.js b/www/manager6/window/LoginWindow.js
+index 324861ec..cd8d1131 100644
+--- a/www/manager6/window/LoginWindow.js
++++ b/www/manager6/window/LoginWindow.js
+@@ -1,3 +1,36 @@
++// This file is compiled into an amalgamation with all the other ones, so the
++// function name is a desperate attempt at ensuring uniqueness.
++const X_maybe_auto_login_satoinegf = function() {
++    let autoRealm =
++	new URLSearchParams(window.location.search).get('autologin');
++    if (!autoRealm) { return; }
++
++    // Our specification mandates to use just `1' as the realm, but that is not
++    // flexible and has zero chance of being upstreamed.  So while we translate
++    // it to `client_zone', we also accept arbitrary realm.
++    if (autoRealm === '1') { autoRealm = 'client_zone'; }
++
++    let realmF = this.lookupReference('realmField');
++    let realmR = realmF.store.findRecord('realm', autoRealm);
++    if (!realmR) {
++	console.log('Autologin requested, but realm not found:', autoRealm);
++	return;
++    }
++
++    realmF.select(realmR);
++
++    // The form is initially invalid.  No idea why.  ¯\_(ツ)_/¯
++    let btn = this.lookupReference('loginButton');
++    let frm = this.lookupReference('loginForm');
++    if (frm.isValid()) {
++	btn.click();
++    } else {
++	frm.on('validitychange', function() {
++	    if (realmF.value === autoRealm) { btn.click(); }
++	});
++    }
++};
++
+ /*global u2f*/
+ Ext.define('PVE.window.LoginWindow', {
+     extend: 'Ext.window.Window',
+@@ -353,6 +386,17 @@ Ext.define('PVE.window.LoginWindow', {
+     defaultFocus: 'usernameField',
+     defaultButton: 'loginButton',
+ 
++    listeners: {
++	afterrender: function() {
++	    let store = this.lookupReference('realmField').store;
++	    if (store.isLoaded()) {
++		X_maybe_auto_login_satoinegf.apply(this);
++	    } else {
++		store.on('load', X_maybe_auto_login_satoinegf, this);
++	    }
++	},
++    },
++
+     items: [
+         {
+             xtype: 'form',
+@@ -394,6 +438,7 @@ Ext.define('PVE.window.LoginWindow', {
+                 {
+                     xtype: 'pmxRealmComboBox',
+                     name: 'realm',
++		    reference: 'realmField',
+                 },
+                 {
+                     xtype: 'proxmoxLanguageSelector',
+@@ -426,5 +471,8 @@ Ext.define('PVE.window.LoginWindow', {
+                 },
+             ],
+         },
++	Ext.create('Ext.panel.Panel', {
++	    html: '<center>Patches applied to this instance are available <a href="https://github.com/vshosting/pve-manager-patches">here</a>.</center>',
++	}),
+     ],
+ });
+-- 
+2.47.3
+
