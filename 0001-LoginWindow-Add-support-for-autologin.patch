@@ -1,4 +1,4 @@
-From f165e0424c0d8bf010eb2561a15e9c4ca46feb99 Mon Sep 17 00:00:00 2001
+From ae99e572bbede193b43ca41f7f3720365b1dc1e5 Mon Sep 17 00:00:00 2001
 From: root <root@pve.test>
 Date: Mon, 7 Jul 2025 16:06:54 +0200
 Subject: [PATCH] LoginWindow: Add support for autologin.
